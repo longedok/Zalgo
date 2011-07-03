@@ -52,7 +52,7 @@ class StreamPlayer(threading.Thread):
     def run(self):
         rate = 1
         card = 0
-        while True and self.__is_playing:
+        while True:
             frames = self.__demuxer.parse(self.__buffer)
             self.__buffer = ''
             for frame in frames:

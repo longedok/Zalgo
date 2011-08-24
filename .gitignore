@@ -1,0 +1,6 @@
+Session.vim
+*.swp
+files/*.mp3
+zalgo/*.pyc
+*.pyc
+media_db

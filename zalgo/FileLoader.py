@@ -1,5 +1,6 @@
 import id3reader
 import sha
+import os
 
 from Debug import debug
 from Database import Database
@@ -12,7 +13,7 @@ class FileLoader(object):
         self.__db = Database()
         debug('FileLoader: init complete')
 
-    def index_files(self, pathes):
+    def index_files(self, pathes=list()):
         for path in pathes:
             if not path in self.__pathes:
                 self.__pathes.append(path)
@@ -32,8 +33,6 @@ class FileLoader(object):
                         self.__db.store(['title', 'artist', 'album', 'path', 'hash'], 
                                 [title, artist, album, full_path, hash])
                         del sha_obj
-        self.__db_conn.commit()
-        cursor.close()
 
     def load_file(self, name):
         try:

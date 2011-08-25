@@ -186,20 +186,21 @@ class Network(threading.Thread):
         if packet_type == Constants.LOOKUP:
             song_info = packet.get_header()
             if song_info:
+                peer_id = self.get_pid_by_ip(host, port)
                 artist = song_info.get('artist') or ''
                 title = song_info.get('title') or ''
                 album = song_info.get('album') or ''
-                search_results = self.__db.lookup('title', 'artist', 'album', 'hash', 
+                def process_result(search_results):
+                    song_list = list()
+                    for entry in search_results:
+                        title, artist, album, hash = entry
+                        song_list.append(dict(zip(['title', 'artist', 'album', 'hash'], [title, artist, album, hash])))
+                    header = {'result': song_list, 'peer_id': str(self.__host_pid)}
+                    self.send(peer_id, Packet(Constants.FOUND, header))
+                self.__db.lookup(process_result, 'title', 'artist', 'album', 'hash', 
                         title=('LIKE', title), artist=('LIKE', artist), album=('LIKE', album))
-                song_list = list()
-                for entry in search_results:
-                    title, artist, album, hash = entry
-                    song_list.append(dict(zip(['title', 'artist', 'album', 'hash'], [title, artist, album, hash])))
-                header = {'result': song_list, 'peer_id': str(self.__host_pid)}
-                answer_packet = Packet(Constants.FOUND, header)
-                debug('Peer.packet_received() (LOOKUP): The outcoming packet is %s' % answer_packet.get_binary())
         elif packet_type == Constants.FOUND:
-            debug('Peer.packet_received() (FOUND): The incoming packet is %s' % packet.pack())
+            debug('Peer.packet_received() (FOUND): The incoming packet is %s' % packet.get_binary())
         elif packet_type == Constants.REQUEST_SREAM:
             pass
         elif packet_type == Constants.READY_TO_STREAM:

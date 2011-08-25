@@ -8,10 +8,10 @@ class SocketInfo(object):
     __packet = Packet()
     __in_buffer = ''
     __out_buffer = ''
-    __state = Constants.RECEIVING_HEADERS
+    __state = Constants.RECEIVING_HEADER
 
-    def __init__(self, to_receive, state):
-        self.__to_receive = to_receive
+    def __init__(self):
+        pass
 
     def ready_for_write(self):
         return len(self.__out)

@@ -1,11 +1,14 @@
-import sqlite3
 import os
+import sqlite3
+import threading
+import time
 
 from Debug import debug
 
-class Database(object):
+class Database(threading.Thread):
     __instance = None
     __first = True
+    __request_queue = []
 
     def __new__(cls, *args, **kwargs):
         if not cls.__instance:
@@ -17,6 +20,8 @@ class Database(object):
     def __init__(self):
         if self.__first:
             debug('Database: init started')
+            threading.Thread.__init__(self, name="Database")
+            self.start()
             self.__fields = ['artist', 'title', 'album', 'hash', 'id', 'path']
             self.__db_file = 'media_db'
             self.__db_conn = None
@@ -37,6 +42,12 @@ class Database(object):
                 self.__db_conn = sqlite3.connect(self.__db_file)
             debug('Database: init complete')
             self.__first = False
+
+    def run(self):
+        while 1:
+            for (request, values) in self.__request_queue:
+                pass
+            time.sleep(0.1)
 
     def __unzip(self, list): 
         return ([v[0] for v in list], [v[1] for v in list])

@@ -10,24 +10,23 @@ import Constants
 from Debug import debug
 from SocketInfo import SocketInfo
 from Packet import Packet
-from Database import Database
 
 class Network(threading.Thread):
     __port = 0
-    __host = ''
+    __host = str()
     __sock = None
     __header_len = 9
-    __sock2sockinfo = {}
-    __pid2sockinfo = {}
-    __ip2pid = {}
     __host_pid = 0
+    __sock2sockinfo = dict()
+    __ip2pid = dict()
+    __pid2sockinfo = dict()
+    __event2handler = dict()
 
     def __init__(self, host='localhost', port=13334):
         threading.Thread.__init__(self, name="Network")
         self.__host = host
         self.__port = port
         self.__host_pid = uuid.uuid1()
-        self.__db = Database()
         self.__buffer_size = 8192
 
     def create_socket(self, peer_list = []):
@@ -66,6 +65,13 @@ class Network(threading.Thread):
         debug('Network.send(): Send packet to %s' % str(peer_id))
         self.__pid2sockinfo[peer_id].append_send_queue(packet)
 
+    def subscribe(self, event, handler):
+        ev2hand = self.__event2handler
+        if not event in ev2hand.keys():
+            ev2hand[event] = [handler]
+        else:
+            ev2hand[evnet].append(handler)
+
     def __create_client_socket(self, socket):
         debug('Network.__create_client_socket(): Creating client socket.')
         self.__sock2sockinfo[socket] = SocketInfo()
@@ -76,7 +82,7 @@ class Network(threading.Thread):
         while 1:
             # put all active sockets into 'sockets' variable
             sockets = self.__sock2sockinfo.keys()
-            # select.select() checks if there are some sockets that ready to be read or write
+            # select.select() checks if there are some sockets that are ready to be read or write
             for_read, for_write, _ = select.select(sockets, sockets, sockets, 0)
             if len(for_read) > 0:
                 # process sockets that is ready to be read
@@ -113,6 +119,12 @@ class Network(threading.Thread):
                             # and put it into Packet() structure or store it into socket buffer
                             # (if we doesn't receive the whole packet).
                             sock_info = self.__sock2sockinfo[sock]
+                            # all the parsing are consist of 3 steps:
+                            # 1) We search for header in incoming binary (from beggining to first null byte)
+                            # 2) Next, we receive the body of packet, if it exists (from first null 
+                            # byte read amount of bytes that is specifyed in header)
+                            # 3) Finally, we pass received packet into processing function
+                            # and reset SocketInfo structure to be ready to recieve new packets
                             if sock_info.get_state() == Constants.RECEIVING_HEADER:
                                 debug('Network.run(): Receiving header.')
                                 buff = sock_info.get_buffer()
@@ -122,9 +134,9 @@ class Network(threading.Thread):
                                     sock_info.set_buffer(buff[null_pos+1:])
                                     try:
                                         parsed_header = json.loads(header)
-                                    except TypeError:
+                                    except TypeError: # header is not in json format or json is invalid
                                         debug('Network.run(): Invalid header.')
-                                    else:
+                                    else: # all right, we can move to the next step
                                         sock_info.get_packet().set_header(parsed_header)
                                         content_len = sock_info.get_packet().get_header_field('content_len')
                                         if content_len and content_len > 0:
@@ -141,7 +153,12 @@ class Network(threading.Thread):
                                     sock_info.set_buffer(buff[to_receive:])
                                     sock_info.set_state(Constants.PACKET_RECEIVED)
                             if sock_info.get_state() == Constants.PACKET_RECEIVED:
-                                self.packet_received(sock, sock_info.get_packet())
+                                debug('Network.run(): Packet received.')
+                                packet = sock_info.get_packet()
+                                _type = packet.get_header_field('type')
+                                if (_type is not None):
+                                    for handler in self.__event2handler[_type]:
+                                        handler.process_packet(sock, packet)
                                 sock_info.set_state(Constants.RECEIVING_HEADER)
                                 sock_info.set_packet(Packet())
             if len(for_write) > 0:
@@ -158,60 +175,14 @@ class Network(threading.Thread):
         debug('Network.get_pid_by_ip(): %s' % self.__ip2pid)
         return self.__ip2pid.get((host, port))
 
-    def __register_pid(self, pid, host, port):
+    def register_pid(self, pid, host, port):
         self.__ip2pid[(host, port)] = pid
         clients = filter(lambda x: id(x) != id(self.__sock), self.__sock2sockinfo.keys())
         sock = filter(lambda x: (host, port) == x.getpeername(), clients)[0]
         self.__pid2sockinfo[pid] = self.__sock2sockinfo[sock]
 
-    def packet_received(self, sender, packet):
-        debug('Network.packet_received(): Packet received.')
-        host, port = sender.getpeername()
-        debug(packet)
-        packet_type = packet.get_header_field('type')
-        if packet_type is None:
-            debug('Network.packet_received(): Received packet without type. Processing of that packet stopped.')
-            return
-        if packet_type == Constants.HANDSHAKE:
-            pid = packet.get_header_field('peer_id')
-            if pid:
-                self.__register_pid(pid, host, port)
-                self.send(pid, Packet(Constants.HANDSHAKE_ACCEPT, {'peer_id': str(self.__host_pid)}))
-                debug('Network.packet_received(): Handshake complete.')
-        if packet_type == Constants.HANDSHAKE_ACCEPT:
-            pid = packet.get_header_field('peer_id')
-            if pid:
-                self.__register_pid(pid, host, port)
-                debug('Network.packet_received(): Handshake accept complete (%s:%d).' % (host, port))
-        if packet_type == Constants.LOOKUP:
-            song_info = packet.get_header()
-            if song_info:
-                peer_id = self.get_pid_by_ip(host, port)
-                artist = song_info.get('artist') or ''
-                title = song_info.get('title') or ''
-                album = song_info.get('album') or ''
-                def process_result(search_results):
-                    song_list = list()
-                    for entry in search_results:
-                        title, artist, album, hash = entry
-                        song_list.append(dict(zip(['title', 'artist', 'album', 'hash'], [title, artist, album, hash])))
-                    header = {'result': song_list, 'peer_id': str(self.__host_pid)}
-                    self.send(peer_id, Packet(Constants.FOUND, header))
-                self.__db.lookup(process_result, 'title', 'artist', 'album', 'hash', 
-                        title=('LIKE', title), artist=('LIKE', artist), album=('LIKE', album))
-        elif packet_type == Constants.FOUND:
-            debug('Peer.packet_received() (FOUND): The incoming packet is %s' % packet.get_binary())
-        elif packet_type == Constants.REQUEST_SREAM:
-            pass
-        elif packet_type == Constants.READY_TO_STREAM:
-            pass
-        elif packet_type == Constants.REQUEST_PART:
-            pass
-        elif packet_type == Constants.CONTENT:
-            self.__sp.add_chunk(packet.content)
-            if self.first_time:
-                self.__sp.play()
-                self.first_time = False
+    def get_host_pid(self):
+        return self.__host_pid
 
 if __name__ == '__main__':
     test = Network('localhost', 13333)

@@ -1,5 +1,7 @@
 import math
 
+from Debug import debug
+
 class DataProcessor(object):
     def __init__(self):
         pass

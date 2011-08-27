@@ -1,9 +1,13 @@
-class FileStreamer(object):
-    def __init__(self, hash, part_size):
-        self.__hash = hash
-        self.__part_size = part_size
-        self.__chunks = []
-        self.__file_loader = FileLoader()
+from FileLoader import FileLoader
+from DataProcessor import DataProcessor
+from Debug import debug
 
-    def get_chunks(self, start, end):
-        return self.__chunks[start, end]
+class FileStreamer(object):
+    def __init__(self, path, part_size):
+        self.__part_size = part_size
+        dp = DataProcessor()
+        fl = FileLoader()
+        self.__chunks = dp.split_data(fl.load_file(path), part_size)
+
+    def get_chunk(self, start):
+        return self.__chunks[start]

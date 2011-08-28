@@ -24,8 +24,8 @@ if __name__ == '__main__':
         stream_handler = StreamHandler(server)
         server.subscribe(Constants.REQUEST_STREAM, stream_handler)
         server.subscribe(Constants.REQUEST_PART, stream_handler)
-        server.subscribe(Constants.READY_TO_STREAM, ReadyToStreamHandler(server))
-        server.subscribe(Constants.CONTENT, ContentHandler(server))
+        server.subscribe(Constants.READY_TO_STREAM, stream_handler)
+        server.subscribe(Constants.CONTENT, stream_handler)
         server.create_socket()
     else:
         client = Network('localhost', 13334)
@@ -37,8 +37,8 @@ if __name__ == '__main__':
         stream_handler = StreamHandler(client)
         client.subscribe(Constants.REQUEST_STREAM, stream_handler)
         client.subscribe(Constants.REQUEST_PART, stream_handler)
-        client.subscribe(Constants.READY_TO_STREAM, ReadyToStreamHandler(client))
-        client.subscribe(Constants.CONTENT, ContentHandler(client))
+        client.subscribe(Constants.READY_TO_STREAM, stream_handler)
+        client.subscribe(Constants.CONTENT, stream_handler)
         client.create_socket()
         client.handshake_with('localhost', 13333)
         time.sleep(1)
@@ -46,4 +46,3 @@ if __name__ == '__main__':
         if server_pid:
             client.send(server_pid, Packet(Constants.REQUEST_STREAM, {'hash': '49bab585ee182a42e96da4b830290c5dc43e398e', 'chunk_size': 100000}))
             time.sleep(1)
-            client.send(server_pid, Packet(Constants.REQUEST_PART, {'from': 0}))

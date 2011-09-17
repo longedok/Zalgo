@@ -5,13 +5,17 @@ import struct
 import threading
 import uuid
 import json
+import pydevd 
+
+from PyQt4.QtCore import QThread
+from PyQt4.QtGui import qApp
 
 import Constants
 from Debug import debug
 from SocketInfo import SocketInfo
 from Packet import Packet
 
-class Network(threading.Thread):
+class Network(QThread):
     __port = 0
     __host = str()
     __sock = None
@@ -21,9 +25,10 @@ class Network(threading.Thread):
     __ip2pid = dict()
     __pid2sockinfo = dict()
     __event2handler = dict()
+    __packetid2callback = dict()
 
     def __init__(self, host='localhost', port=13334):
-        threading.Thread.__init__(self, name="Network")
+        super(Network, self).__init__()
         self.__host = host
         self.__port = port
         self.__host_pid = uuid.uuid1()
@@ -78,8 +83,9 @@ class Network(threading.Thread):
 
     def run(self):
         '''Accept incoming connections and send/receive packets to existing one.'''
-        debug('Network.run(): Processing started.')
+        debug('Network.run(): Processing started.')    
         while 1:
+            qApp.processEvents()
             # put all active sockets into 'sockets' variable
             sockets = self.__sock2sockinfo.keys()
             # select.select() checks if there are some sockets that are ready to be read or write
@@ -120,11 +126,8 @@ class Network(threading.Thread):
                             # (if we doesn't receive the whole packet).
                             sock_info = self.__sock2sockinfo[sock]
                             # all the parsing are consist of 3 steps:
-                            # 1) We search for header in incoming binary (from beggining to first null byte)
-                            # 2) Next, we receive the body of packet, if it exists (from first null 
-                            # byte read amount of bytes that is specifyed in header)
-                            # 3) Finally, we pass received packet into processing function
-                            # and reset SocketInfo structure to be ready to recieve new packets
+                            # 1) We search for header in incoming binary (from 
+                            # beggining to first null byte)
                             if sock_info.get_state() == Constants.RECEIVING_HEADER:
                                 debug('Network.run(): Receiving header.')
                                 buff = sock_info.get_buffer()
@@ -144,6 +147,9 @@ class Network(threading.Thread):
                                             sock_info.set_state(Constants.RECEIVING_CONTENT)
                                         else:
                                             sock_info.set_state(Constants.PACKET_RECEIVED)
+                            # 2) Next, we receive the body of the packet, if it exists 
+                            # (from first null byte read amount of bytes that is specifyed 
+                            # in header)
                             if sock_info.get_state() == Constants.RECEIVING_CONTENT:
                                 debug('Network.run(): Receiving content.')
                                 buff = sock_info.get_buffer()
@@ -152,6 +158,8 @@ class Network(threading.Thread):
                                     sock_info.get_packet().set_content(buff[:to_receive])
                                     sock_info.set_buffer(buff[to_receive:])
                                     sock_info.set_state(Constants.PACKET_RECEIVED)
+                            # 3) Finally, we pass received packet into processing function
+                            # and reset SocketInfo structure to be ready to recieve new packets
                             if sock_info.get_state() == Constants.PACKET_RECEIVED:
                                 debug('Network.run(): Packet received.')
                                 packet = sock_info.get_packet()
@@ -183,6 +191,9 @@ class Network(threading.Thread):
 
     def get_host_pid(self):
         return self.__host_pid
+
+    def get_clients(self):
+        return self.__pid2sockinfo.keys()
 
 if __name__ == '__main__':
     test = Network('localhost', 13333)

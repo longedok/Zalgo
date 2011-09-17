@@ -3,9 +3,9 @@ import time
 import random
 
 from Debug import debug
+import Constants
 
 class Packet(object):
-
     def __init__(self, _type=-1, header=dict(), content=str()):
         self.__header = dict()
         self.__content = str()
@@ -43,6 +43,13 @@ class Packet(object):
 
     def __str__(self):
         return "Header: %s" % (self.__header)
+
+class LookupPacket(Packet):
+
+    def __init__(self, header=dict(), content=str(), hop_limit=6):
+        super(LookupPacket, self).__init__(Constants.LOOKUP, header, content)
+        self.set_header_field('hops', 0)
+        self.set_header_field('hop_limit', hop_limit)
 
 if __name__ == '__main__':
     p = Packet(1, {'title': 'starlight'})

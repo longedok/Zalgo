@@ -8,10 +8,11 @@ class FileStreamer(object):
         dp = DataProcessor()
         fl = FileLoader()
         self.__chunks = dp.split_data(fl.load_file(path), part_size)
+        debug('FileStreamer.init(): len(self.__chunks) == %d' % len(self.__chunks))
         self.__stream_id = stream_id
 
-    def get_chunk(self, start):
-        if start < len(self.__chunks):
-            return self.__chunks[start]
+    def get_chunk(self, _from):
+        if _from < len(self.__chunks):
+            return self.__chunks[_from]
         else:
             return None

@@ -1,6 +1,14 @@
 Session.vim
+
 *.swp
-files/*.mp3
-zalgo/*.pyc
 *.pyc
+
 media_db
+
+.project
+.pydevproject
+
+ui/
+files/
+zalgo/*.pyc
+zalgo/test.txt

@@ -1,11 +1,13 @@
 import os
 import sqlite3
-import threading
 import time
+
+from PyQt4.QtCore import QThread
+from PyQt4.QtGui import qApp
 
 from Debug import debug
 
-class Database(threading.Thread):
+class Database(QThread):
     __instance = None
     __first = True
     __request_queue = []
@@ -19,13 +21,13 @@ class Database(threading.Thread):
         
     def __init__(self):
         if self.__first:
-            threading.Thread.__init__(self, name="Database")
+            super(Database, self).__init__()
             self.start()
             self.__first = False
+            self.__fields = ['artist', 'title', 'album', 'hash', 'id', 'path']
 
     def __create_db(self):
         debug('Database: init started')
-        self.__fields = ['artist', 'title', 'album', 'hash', 'id', 'path']
         self.__db_file = 'media_db'
         self.__db_conn = None
         if not os.path.exists(self.__db_file):
@@ -62,16 +64,25 @@ class Database(threading.Thread):
     def __unzip(self, list): 
         return ([v[0] for v in list], [v[1] for v in list])
 
-    def lookup(self, callback, *fields, **request):
+    def lookup(self, callback, *fields, **values):
+        '''callback  callback with logic for db answer processing.
+           fields    list of fields that should be passed into callback as result.
+           values    dict. key - name of table field, value - tuple
+                     of comparasion sign and value of corresponding field.
+           
+           Forms sql requst, creates tuple of (sql_request, values, callback) and put 
+           it into request processing queue.
+        '''
         for field in fields:
-            if not field in self.__fields:
-                debug('Database.store(): wrong fields in SELECT request')
+            if not field in self.__fields: # checks if field is exists in table
+                debug('Database.lookup(): wrong field in SELECT request: %s' % field)
                 return
-        valid_request = dict(filter(lambda x: x[1][1] != '', request.items())) # remove empty values
-        rfields = valid_request.keys()
-        compare_sings, values = self.__unzip(valid_request.values())
+        not_empty = dict(filter(lambda x: x[1][1] != '', values.items())) # remove empty values
+        parameters = not_empty.keys()
+        signs, values = self.__unzip(not_empty.values())
         sql = ("SELECT " + ', '.join(fields) + " FROM music WHERE " + 
-                    ' AND '.join(['(%s %s ?)' % (f, v) for (f, v) in zip(rfields, compare_sings)]))
+                    ' AND '.join(["(%s %s ?)" % (f, v) for (f, v) in zip(parameters, signs)]))
+        debug('Database.lookup(): sql %s' % sql)
         self.__request_queue.append((sql, values, callback))
 
     def store(self, fields, values):
@@ -85,3 +96,8 @@ class Database(threading.Thread):
         sql = "INSERT INTO music (" + ', '.join(fields) + ") VALUES (" + ', '.join(['?'] * len(values)) + ')'
         self.__request_queue.append((sql, values, None))
 
+if __name__ == '__main__':
+    def test(x):
+        pass
+    db = Database()
+    db.lookup(test, 'title', 'hash', album=('LIKE', 'Starlight'), artist=('=', 'Muse'))

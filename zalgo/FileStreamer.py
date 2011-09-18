@@ -7,7 +7,9 @@ class FileStreamer(object):
         self.__part_size = part_size
         dp = DataProcessor()
         fl = FileLoader()
-        self.__chunks = dp.split_data(fl.load_file(path), part_size)
+        data = fl.load_file(path)
+        self.__size = len(data)
+        self.__chunks = dp.split_data(data, part_size)
         debug('FileStreamer.init(): len(self.__chunks) == %d' % len(self.__chunks))
         self.__stream_id = stream_id
 
@@ -16,3 +18,6 @@ class FileStreamer(object):
             return self.__chunks[_from]
         else:
             return None
+    
+    def get_size(self):
+        return self.__size

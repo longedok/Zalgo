@@ -32,7 +32,7 @@ class Network(QThread):
         self.__host = host
         self.__port = port
         self.__host_pid = uuid.uuid1()
-        self.__buffer_size = 8192
+        self.__buffer_size = 65536
 
     def create_socket(self, peer_list = []):
         if self.__sock is None:

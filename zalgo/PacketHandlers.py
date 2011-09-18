@@ -82,7 +82,7 @@ class FoundHandler(Handler):
 
 class StreamHandler(Handler):
     '''Process REQUEST_STREAM, REQUEST_PART, READY_TO_STREAM and CONTENT packets.'''
-    streamCreated = pyqtSignal('QString', 'QString')
+    streamCreated = pyqtSignal('QString', 'QString', int)
     packetReceived = pyqtSignal(int, 'QString', 'QByteArray')
     newPeerConnected = pyqtSignal('QString')
 
@@ -103,7 +103,8 @@ class StreamHandler(Handler):
             def path_found(path):
                 if path:
                     self.__pid2stream[peer_id] = FileStreamer(path[0][0], chunk_size, stream_id)
-                    self.network.send(peer_id, Packet(Constants.READY_TO_STREAM, {'stream_id': stream_id}))
+                    size = self.__pid2stream[peer_id].get_size()
+                    self.network.send(peer_id, Packet(Constants.READY_TO_STREAM, {'stream_id': stream_id, 'size': size}))
             if (file_hash is not None) and chunk_size > 0:
                 self.db.lookup(path_found, 'path', hash=('=', file_hash))
             else:
@@ -121,7 +122,8 @@ class StreamHandler(Handler):
                     
         elif _type == Constants.READY_TO_STREAM:
             stream_id = packet.get_header_field('stream_id')
-            self.streamCreated.emit(stream_id, peer_id)             
+            file_size = packet.get_header_field('size')
+            self.streamCreated.emit(stream_id, peer_id, file_size)             
                 
         elif _type == Constants.CONTENT:
             stream_id = packet.get_header_field('stream_id')

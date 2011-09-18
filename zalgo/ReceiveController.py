@@ -6,7 +6,7 @@ from Debug import debug
 import pydevd
 
 class ReceiveController(QObject):
-    streamCreated = pyqtSignal()
+    streamCreated = pyqtSignal(int)
     contentReceived = pyqtSignal('QByteArray')
     nextPacketRequests = pyqtSignal('QString', list, list)
     
@@ -16,7 +16,7 @@ class ReceiveController(QObject):
         self.__pid2ready = dict()
         self.__current_sid = str()
         
-    def recreate(self, stream_id, peer_id):
+    def recreate(self, stream_id, peer_id, size):
         peer_id = str(peer_id)
         stream_id = str(stream_id)
         
@@ -48,7 +48,7 @@ class ReceiveController(QObject):
         
         pids, packet_nums = self.get_packet_requests()
         self.nextPacketRequests.emit(self.__current_sid, pids, packet_nums)
-        self.streamCreated.emit()
+        self.streamCreated.emit(size)
     
     def get_peers(self):
         return self.__pid2ready.keys()

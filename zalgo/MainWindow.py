@@ -3,9 +3,11 @@ import time
 
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import QFile, QIODevice
+from PyQt4.QtGui import qApp
 from PyQt4.phonon import Phonon
 
 from MainWindowAuto import Ui_MainWindow
+from Debug import debug
 
 import pydevd
 
@@ -24,22 +26,28 @@ class MainWindow(QtGui.QMainWindow):
         self.__pid = ''
         
         self.__audio_output = Phonon.AudioOutput(Phonon.MusicCategory, self)
-        self.__media_ojbect = Phonon.MediaObject(self) 
-        self.__media_ojbect.setCurrentSource(Phonon.MediaSource(self.__stream_adapter))
+        self.__media_object = Phonon.MediaObject(self) 
+        self.__media_object.stateChanged.connect(self.state_changed)
         
-        Phonon.createPath(self.__media_ojbect, self.__audio_output)
+        Phonon.createPath(self.__media_object, self.__audio_output)
+        
+    def state_changed(self, newState, oldState):
+        print newState
         
     def search(self):
         search_text = self.ui.searchEdit.text()
         self.__peer.lookup(search_text)
 
     def play(self):
+        self.__media_object.play()
         curr = self.ui.trackList.selectedItems()[0]
         ind = self.ui.trackList.row(curr)
         self.__peer.start_stream(self.__pid, self.__hashes[ind])
 
-    def streamCreated(self):
-        self.__media_ojbect.play()
+    def streamCreated(self, size):
+        self.__media_object.setCurrentSource(Phonon.MediaSource(self.__stream_adapter))
+        self.__media_object.play()
+        debug('MainWindow.streamCreated(): strea_adapter.read(10) = %s' % self.__stream_adapter.read(10))
 
     def musicFound(self, pid, music_list):
         self.ui.trackList.clear()

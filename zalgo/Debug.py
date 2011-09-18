@@ -2,5 +2,5 @@ __debug = True
 
 def debug(text):
     if __debug:
-        print "DEBUG: %s" % text
+        pass#print "DEBUG: %s" % text
 

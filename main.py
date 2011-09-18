@@ -47,6 +47,7 @@ if __name__ == '__main__':
     else:
         stream_adapter = StreamAdapter()
         recv_contr = ReceiveController()
+        recv_contr.streamCreated.connect(stream_adapter.new_stream)
         recv_contr.contentReceived.connect(stream_adapter.receive_data)
         
         client = Network('localhost', 13334)

@@ -24,11 +24,10 @@ class StreamAdapter(QIODevice):
         
     # Implementation of methods derived from QIODevice
     def size(self):
-        print self.__size
         return self.__size
 
     def bytesAvailable(self):
-        avail = len(self.__buffer) #+ QIODevice.bytesAvailable(self)
+        avail = len(self.__buffer)
         avail -= self.__offset
         return max(avail, 0)
 

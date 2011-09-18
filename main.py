@@ -22,6 +22,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Distributed audio player.')
     parser.add_argument('--client', nargs='?', const='client', default='server', 
             help='Indicates that script should be launched in client mode (server mode is default).')
+    parser.add_argument('--host', nargs='?', const='host', default='localhost')
+    parser.add_argument('--port', nargs='?', const='port', default='13333')
     args = parser.parse_args()
     server_mode = True if args.client == 'server' else False
     
@@ -76,7 +78,7 @@ if __name__ == '__main__':
         client.subscribe(Constants.LOOKUP, LookupHandler(client))
         
         client.create_socket()
-        client.handshake_with('localhost', 13333)  
+        client.handshake_with(args.host, int(args.port))  
      
         main_window.show()
         

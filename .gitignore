@@ -9,6 +9,6 @@ media_db
 .pydevproject
 
 ui/
-files/
+files/*.mp3
 zalgo/*.pyc
 zalgo/test.txt

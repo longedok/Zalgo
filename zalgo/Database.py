@@ -1,16 +1,13 @@
 import os
 import sqlite3
 import time
-
-from PyQt4.QtCore import QThread
-from PyQt4.QtGui import qApp
+from threading import Lock
 
 from Debug import debug
 
-class Database(QThread):
+class Database(object):
     __instance = None
     __first = True
-    __request_queue = []
 
     def __new__(cls, *args, **kwargs):
         if not cls.__instance:
@@ -21,17 +18,16 @@ class Database(QThread):
         
     def __init__(self):
         if self.__first:
-            super(Database, self).__init__()
-            self.start()
+            self.__mutex = Lock()
             self.__first = False
-            self.__fields = ['artist', 'title', 'album', 'hash', 'id', 'path']
+            self.__fields = ['artist', 'title', 'album', 'hash', 'id', 'path', 'last_modified']
+            self.__create_db()
 
     def __create_db(self):
         debug('Database: init started')
         self.__db_file = 'media_db'
-        self.__db_conn = None
         if not os.path.exists(self.__db_file):
-            self.__db_conn = sqlite3.connect(self.__db_file)
+            self.__db_conn = sqlite3.connect(self.__db_file, check_same_thread=False)
             cursor = self.__db_conn.cursor()
             cursor.execute('''CREATE TABLE IF NOT EXISTS music 
                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -39,39 +35,24 @@ class Database(QThread):
                  artist TEXT, 
                  album TEXT, 
                  path TEXT, 
-                 hash TEXT)''')
+                 hash TEXT,
+                 last_modified INT)''')
             self.__db_conn.commit()
             debug('Database.__init__(): table "music" has been created')
             cursor.close()
         else:
-            self.__db_conn = sqlite3.connect(self.__db_file)
+            self.__db_conn = sqlite3.connect(self.__db_file, check_same_thread=False)
         debug('Database: init complete')
-        
-    def run(self):
-        self.__create_db()
-        while 1:
-            queue_len = len(self.__request_queue)
-            for _ in xrange(queue_len):
-                (sql, values, callback) = self.__request_queue.pop()
-                cursor = self.__db_conn.cursor()
-                cursor.execute(sql, tuple(values))
-                if callback:
-                    callback(list(cursor))
-                self.__db_conn.commit()
-                cursor.close()
-            time.sleep(0.1)
 
     def __unzip(self, list): 
         return ([v[0] for v in list], [v[1] for v in list])
 
-    def lookup(self, callback, *fields, **values):
-        '''callback  callback with logic for db answer processing.
-           fields    list of fields that should be passed into callback as result.
+    def lookup(self, *fields, **values):
+        '''fields    list of fields that should be passed into callback as result.
            values    dict. key - name of table field, value - tuple
                      of comparasion sign and value of corresponding field.
            
-           Forms sql requst, creates tuple of (sql_request, values, callback) and put 
-           it into request processing queue.
+           Forms sql requst from parameters and performs it.
         '''
         for field in fields:
             if not field in self.__fields: # checks if field is exists in table
@@ -82,8 +63,12 @@ class Database(QThread):
         signs, values = self.__unzip(not_empty.values())
         sql = ("SELECT " + ', '.join(fields) + " FROM music WHERE " + 
                     ' AND '.join(["(%s %s ?)" % (f, v) for (f, v) in zip(parameters, signs)]))
-        debug('Database.lookup(): sql %s' % sql)
-        self.__request_queue.append((sql, values, callback))
+        with self.__mutex:
+            cursor = self.__db_conn.cursor()
+            cursor.execute(sql, tuple(values))
+            result = list(cursor)
+            cursor.close()
+        return result
 
     def store(self, fields, values):
         if len(fields) != len(values):
@@ -94,8 +79,12 @@ class Database(QThread):
                 debug('Database.store(): wrong fields in INSERT request')
                 return
         sql = "INSERT INTO music (" + ', '.join(fields) + ") VALUES (" + ', '.join(['?'] * len(values)) + ')'
-        self.__request_queue.append((sql, values, None))
-
+        with self.__mutex:
+            cursor = self.__db_conn.cursor()
+            cursor.execute(sql, tuple(values))
+            self.__db_conn.commit()
+            cursor.close()
+        
 if __name__ == '__main__':
     def test(x):
         pass

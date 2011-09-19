@@ -3,7 +3,6 @@ from random import randint
 from PyQt4.QtCore import QObject, QFile, pyqtSignal, QIODevice
 
 from Debug import debug
-import pydevd
 
 class ReceiveController(QObject):
     streamCreated = pyqtSignal(int)
@@ -57,9 +56,11 @@ class ReceiveController(QObject):
         if len(self.__pid2ready.keys()) > 0:
             ready_pids = filter(lambda key: self.__pid2ready[key], self.__pid2ready.keys())
             for pid in ready_pids:
-                self.__pid2ready[pid] = False            
+                self.__pid2ready[pid] = False  
+                          
             last_pack = self.__last_packet
             self.__last_packet += 1
+            
             return (ready_pids, range(last_pack, last_pack + len(ready_pids)))
         else:
             return None
@@ -108,6 +109,7 @@ class ReceiveController(QObject):
             final_data = "".join(inbox[:cons_to])
             
             self.contentReceived.emit(final_data)
+            
             pids, nums = self.get_packet_requests()
             self.nextPacketRequests.emit(self.__current_sid, pids, nums)
             

@@ -31,6 +31,7 @@ if __name__ == '__main__':
     
     if server_mode:
         server = Network('localhost', 13333)
+        file_loader = FileLoader(['D:/music/'])
         
         handshake_handler = HandshakeHandler(server)
         server.subscribe(Constants.HANDSHAKE, handshake_handler)
@@ -47,6 +48,7 @@ if __name__ == '__main__':
         
         server.create_socket()
     else:
+        file_loader = FileLoader(['D:/music/'])
         stream_adapter = StreamAdapter()
         recv_contr = ReceiveController()
         recv_contr.streamCreated.connect(stream_adapter.new_stream)

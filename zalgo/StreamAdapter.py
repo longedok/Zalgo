@@ -5,8 +5,6 @@ from PyQt4.QtGui import qApp
 
 from Debug import debug
 
-import pydevd
-
 class StreamAdapter(QIODevice):
     def __init__(self):
         super(StreamAdapter, self).__init__()
@@ -37,7 +35,7 @@ class StreamAdapter(QIODevice):
     def readData(self, maxlen):
         while self.bytesAvailable() == 0:    
             qApp.processEvents()     
-            time.sleep(0.1) 
+            time.sleep(0.01) 
         
         number = min(maxlen, len(self.__buffer) - self.__offset)    
         data = self.__buffer[self.__offset:self.__offset + number]

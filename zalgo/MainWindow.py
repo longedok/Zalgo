@@ -9,8 +9,6 @@ from PyQt4.phonon import Phonon
 from MainWindowAuto import Ui_MainWindow
 from Debug import debug
 
-import pydevd
-
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, peer, stream_adapter, parent=None):
         super(MainWindow, self).__init__(parent)

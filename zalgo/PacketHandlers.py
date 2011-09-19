@@ -7,8 +7,6 @@ from FileStreamer import FileStreamer
 from ReceiveController import ReceiveController
 from Debug import debug
 
-import pydevd
-
 class Handler(QObject):
     def __init__(self, network):
         super(Handler, self).__init__()
@@ -57,16 +55,15 @@ class LookupHandler(Handler):
             title = song_info.get('title') or ''
             album = song_info.get('album') or ''
             
-            def process_result(search_results):
-                song_list = list()
-                for entry in search_results:
-                    title, artist, album, _hash = entry
-                    song_list.append(dict(zip(['title', 'artist', 'album', 'hash'], 
-                        [title, artist, album, _hash])))
-                self.network.send(peer_id, Packet(Constants.FOUND, {'results': song_list}))
-                
-            self.db.lookup(process_result, 'title', 'artist', 'album', 'hash', 
-                    title=('LIKE', title), artist=('LIKE', artist), album=('LIKE', album))
+            search_results = self.db.lookup('title', 'artist', 'album', 'hash', 
+                                            title=('LIKE', title), artist=('LIKE', artist), album=('LIKE', album))
+        
+            song_list = list()
+            for entry in search_results:
+                title, artist, album, _hash = entry
+                song_list.append(dict(zip(['title', 'artist', 'album', 'hash'], 
+                    [title, artist, album, _hash])))
+            self.network.send(peer_id, Packet(Constants.FOUND, {'results': song_list}))     
 
 class FoundHandler(Handler):
     musicFound = pyqtSignal(str, list)
@@ -100,13 +97,13 @@ class StreamHandler(Handler):
             file_hash = packet.get_header_field('hash')
             chunk_size = packet.get_header_field('chunk_size')
             stream_id = packet.get_header_field('packet_id')
-            def path_found(path):
+            
+            if (file_hash is not None) and chunk_size > 0:
+                path = self.db.lookup('path', hash=('=', file_hash))
                 if path:
                     self.__pid2stream[peer_id] = FileStreamer(path[0][0], chunk_size, stream_id)
                     size = self.__pid2stream[peer_id].get_size()
                     self.network.send(peer_id, Packet(Constants.READY_TO_STREAM, {'stream_id': stream_id, 'size': size}))
-            if (file_hash is not None) and chunk_size > 0:
-                self.db.lookup(path_found, 'path', hash=('=', file_hash))
             else:
                 debug("Peer.packet_received() (REQUEST_STREAM): No 'hash' or 'chunk_size' field was found in packet or 'chunk_size' is less or equal to 0")
                 

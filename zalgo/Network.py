@@ -5,7 +5,6 @@ import struct
 import threading
 import uuid
 import json
-import pydevd 
 
 from PyQt4.QtCore import QThread
 from PyQt4.QtGui import qApp

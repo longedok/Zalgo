@@ -7,19 +7,6 @@ from PyQt4.QtCore import QThread
 from Debug import debug
 from Database import Database
 
-class partial(object):
-    def __init__(*args, **kw):
-        self = args[0]
-        self.fn, self.args, self.kw = (args[1], args[2:], kw)
-
-    def __call__(self, *args, **kw):
-        if kw and self.kw:
-            d = self.kw.copy()
-            d.update(kw)
-        else:
-            d = kw or self.kw
-        return self.fn(*(self.args + args), **d)
-
 class FileLoader(QThread):
     def __init__(self, pathes = []):
         super(FileLoader, self).__init__()
@@ -32,7 +19,6 @@ class FileLoader(QThread):
         
     def run(self):
         debug('FileLoader.run(): indexing started')
-        import pydevd   
         os.stat_float_times(int(0))
         for dirname in self.__pathes:
             for root, _, files in os.walk(dirname):

@@ -26,11 +26,18 @@ class HandshakeHandler(Handler):
         peer_id = packet.get_header_field('peer_id')
         debug('HandshakeHandler.process_packet(): peer_id is %s' % peer_id)
         if peer_id:
-            self.network.register_pid(peer_id, host, port)
+            self.network.register_pid(peer_id, host, port)        
             if packet.get_header_field('type') == Constants.HANDSHAKE:
-                self.network.send(peer_id, Packet(Constants.HANDSHAKE_ACCEPT, {'peer_id': str(self.network.get_host_pid())}))
+                known_clients = self.network.get_clients_ips(peer_id)
+                self.network.send(peer_id, Packet(Constants.HANDSHAKE_ACCEPT, 
+                                                  {'peer_id': str(self.network.get_host_pid()),
+                                                   'known_peers': known_clients}))
                 debug('HandshakeHandler.packet_received(): Handshake complete.')
-            debug('HandshakeHandler.packet_received(): Handshake Accept complete.')
+            elif packet.get_header_field('type') == Constants.HANDSHAKE_ACCEPT:
+                to_connect = packet.get_header_field('known_peers')
+                #if to_connect:
+                    #for 
+                debug('HandshakeHandler.packet_received(): Handshake Accept complete.')
 
 class LookupHandler(Handler):
     def __init__(self, network):

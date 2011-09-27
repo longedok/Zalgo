@@ -1,8 +1,6 @@
 import socket
 import time
 import select
-import struct
-import threading
 import uuid
 import json
 
@@ -74,7 +72,7 @@ class Network(QThread):
         if not event in ev2hand.keys():
             ev2hand[event] = [handler]
         else:
-            ev2hand[evnet].append(handler)
+            ev2hand[event].append(handler)
 
     def __create_client_socket(self, socket):
         debug('Network.__create_client_socket(): Creating client socket.')
@@ -193,6 +191,12 @@ class Network(QThread):
 
     def get_clients(self):
         return self.__pid2sockinfo.keys()
+    
+    def get_clients_ips(self, exclude_pid=None):
+        clients = self.get_clients()
+        if exclude_pid:
+            clients.remove(exclude_pid)
+        return [self.__pid2sockinfo[pid].getpeername() for pid in clients]
 
 if __name__ == '__main__':
     test = Network('localhost', 13333)
